@@ -1,0 +1,17 @@
+Code: `main.circom`
+Input: `input.json`
+
+Keys:
+1) Proving - `keys/proof.json`
+2) Verification - `keys/verification_key.json`
+
+Smart contract:
+1) Code - `keys/verifier.sol`
+2) Sepolia address - `0xAB3fB2Ed1Aa9674c9af11F9B3D1e9F2A93205127`
+
+Proof:
+- `_pA` = `["0x12c5415b75f7a08876c60f6e022a9c60ed0e6ee45937c60d004ea18d5e0251a1", "0x11012117846071ba659b217be65993f0f89e87d0e5d94aee34cffd027f9d8c1d"]`
+- `_pB` = `[["0x217695fdee84769004cb8c812308b3cdab293c4e02f53a3f591189e4243e239e", "0x1c08d20e0f4820ea73b37649c12bae696c2650fe0f1b28600c2f9d39a04239bf"],["0x1f4c3bee00a0c257ac73143ef86ebaa38ffc12a25f13f859ed74229dedbfe23f", "0x0710a8d09d966a7ed0234c09347db337ffc331897cdfe310818da8efe58de589"]]`
+- `_pC` = `["0x1939698c0172c9289769a415f1d6827ff760a8cb4def9e70259063572d96511e", "0x006aadf3a3041c85ff56d995f308e29bdfcfec3680e17f2b6244b8a28000e0c1"]`
+- `_pubSignals` = `["0x00000000000000000000000000000000000000000000000000000000000fb175"]`
+
