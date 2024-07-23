@@ -13,43 +13,74 @@ template all(N) {
     out <== IsEqual()([x, N]);
 }
 
-template check_binary(N) {
+template check_fit(N, B) {
     signal input in[N];
     signal output out;
 
-    signal last_bit[N];
     signal is_valid[N];
     for (var i = 0; i < N; i++) {
-        last_bit[i] <-- in[i] & 1;
-        last_bit[i] * (last_bit[i] - 1) === 0;
-        is_valid[i] <== IsEqual()([in[i], last_bit[i]]);
+        // use 252, so the user can pass a bad input, and only then get false
+        is_valid[i] <== LessThan(252)([in[i], 1 << B]);
     }
 
     out <== all(N)(is_valid);
 }
 
-template mult(N) {
-    signal input a[N];
-    signal input b[N];
-    signal output out[2 * N];
+function calc_max_bits(K, B) {
+    var i = 0;
+    while((1 << i) < K)
+        i++;
 
-    signal mult_by_bit[N][2 * N];
-    for (var i = 0; i < N; i++) {// i-th bit
-        for (var j = 0; j < 2 * N; j++) {
-            if (j < i || j - i >= N) // region near the shifted value bits
-                mult_by_bit[i][j] <== 0;
+    return 2 * B * i;
+}
+
+template mult(K, B) {
+    signal input a[K];
+    signal input b[K];
+    signal output out[2 * K];
+
+    signal mult_by_block[K][2 * K];
+    for (var i = 0; i < K; i++) {// i-th block
+        for (var j = 0; j < 2 * K; j++) {
+            if (j < i || j - i >= K) // region near the shifted value bits
+                mult_by_block[i][j] <== 0;
             else
-                mult_by_bit[i][j] <== a[i] * b[j - i];
+                mult_by_block[i][j] <== a[i] * b[j - i];
         }
     }
 
-    var Nout = nbits((2 ** (2 * N) - 1) * N);
-    signal t[Nout] <== BinSum(2 * N, N)(mult_by_bit);
+    signal temp[2 * K];
+    // calculate res for k, as: res[k] = sum(a[i] * b[k - i])
+    // max value per temp is (2 ** B - 1)**2 * (K + 1)
 
-    // multiplication of two numbers, that are < 2^n, will give us res = a * b < (2^n)*(2^n) = 2^(2n)
-    // so, we can truncate it
-    for (var i = 0; i < 2 * N; i++)
-        out[i] <== t[i];
+    for (var i = 0; i < 2 * K; i++) {
+        var x = 0;
+        for (var j = 0; j <= i; j++) {
+            if (j < K && i - j >= 0 && i - j < K)
+                x += mult_by_block[j][i - j];
+        }
+        temp[i] <== x;
+    }
+
+    // normalize each res[k], so it has less then B bits
+    var carry = 0;
+    var max_bits = calc_max_bits(K, B);
+    signal bits[2 * K][max_bits];
+    signal truncated_bits[2 * K][B];
+
+    for (var i = 0; i < 2 * K; i++) {
+        bits[i] <== Num2Bits(max_bits)(temp[i] + carry); // impilicit assertion about overflow
+        for (var j = 0; j < B; j++)
+            truncated_bits[i][j] <== bits[i][j];
+        out[i] <== Bits2Num(B)(truncated_bits[i]);
+
+        carry = 0;
+        var pw = 1;
+        for (var j = B; j < max_bits; j++) {
+            carry += bits[i][j] * pw;
+            pw *= 2;
+        }
+    }
 }
 
 template bin(N, X) {
@@ -101,7 +132,7 @@ template if_mod(N) {
     out <== if_else(N)(diff, strip, equal);
 }
 
-template take_mod(N, M) {
+template take_mod_bin(N, M) {
     signal input a[M];
     signal input mod[N];
     signal output out[N];
@@ -125,36 +156,73 @@ template take_mod(N, M) {
     out <== sliding_window[0];
 }
 
-template mult_mod(N) {
-    signal input a[N];
-    signal input b[N];
-    signal input mod[N];
+template block_to_bin(K, B) {
+    var N = K * B;
+    signal input a[K];
     signal output out[N];
 
-    signal res[2 * N] <== mult(N)(a, b);
-    out <== take_mod(N, 2 * N)(res, mod);
+    signal bin[K][B];
+    for (var i = 0; i < K; i++) {
+        bin[i] <== Num2Bits(B)(a[i]);
+        for (var j = 0; j < B; j++)
+            out[i * B + j] <== bin[i][j];
+    }
 }
 
-template power(N) {
+template bin_to_block(K, B) {
+    var N = K * B;
     signal input a[N];
-    signal input b[N];
-    signal input mod[N];
-    signal output out[N];
+    signal output out[K];
+
+    for (var i = 0; i < K; i++) {
+        var x = 0;
+        var pw = 1;
+        for (var j = 0; j < B; j++) {
+            x += a[i] * pw;
+            pw *= 2;
+        }
+        out[i] <== x;
+    }
+}
+
+template mult_mod(K, B) {
+    signal input a[K];
+    signal input b[K];
+    signal input mod[K];
+    signal output out[K];
+
+    signal mod_bin[K * B] <== block_to_bin(K, B)(mod);
+
+    signal res[2 * K] <== mult(K, B)(a, b);
+    signal res_bin[2 * K * B] <== block_to_bin(2 * K, B)(res);
+
+    signal out_bin[K * B] <== take_mod_bin(K * B, 2 * K * B)(res_bin, mod_bin);
+    out <== bin_to_block(K, B)(out_bin);
+}
+
+template power(K, B) {
+    signal input a[K];
+    signal input b[K];
+    signal input mod[K];
+    signal output out[K];
+
+    var N = K * B;
+    signal bin_b[N] <== block_to_bin(K, B)(b);
 
     // 1-index
-    signal exp[N + 2][N];
-    signal res[N + 1][N]; // result, if b[i] = 1, and previous bits are correct
-    signal res_if_1[N + 1][N];
+    signal exp[N + 2][K];
+    signal res[N + 1][K]; // result, if b[i] = 1, and previous bits are correct
+    signal res_if_1[N + 1][K];
 
-    res[0] <== bin(N, 1)();
+    res[0] <== bin(K, 1)(); // not the bin, but ok
     exp[1] <== a;
     for (var i = 1; i <= N; i++) {
-        res_if_1[i] <== mult_mod(N)(res[i - 1], exp[i], mod);
+        res_if_1[i] <== mult_mod(K, B)(res[i - 1], exp[i], mod);
 
-        var bit = b[i - 1]; // because of the offset
-        res[i] <== if_else(N)(res_if_1[i], res[i - 1], bit);
+        var bit = bin_b[i - 1]; // because of the offset
+        res[i] <== if_else(K)(res_if_1[i], res[i - 1], bit);
 
-        exp[i + 1] <== mult_mod(N)(exp[i], exp[i], mod);
+        exp[i + 1] <== mult_mod(K, B)(exp[i], exp[i], mod);
     }
 
     out <== res[N];
@@ -171,22 +239,24 @@ template LongEqual(N) {
     out <== all(N)(same);
 }
 
-template check_signature(N) {
-    signal input n[N];
-    signal input e[N];
-    signal input m[N];
-    signal input s[N];
+template check_signature(K, B) {
+    assert (K < 250); // to not overflow circom's numbers
+    signal input n[K];
+    signal input e[K];
+    signal input m[K];
+    signal input s[K];
 
     signal output isVerified;
 
-    signal n_check <== check_binary(N)(n);
-    signal e_check <== check_binary(N)(e);
-    signal m_check <== check_binary(N)(m);
-    signal s_check <== check_binary(N)(s);
+    signal n_check <== check_fit(K, B)(n);
+    signal e_check <== check_fit(K, B)(e);
+    signal m_check <== check_fit(K, B)(m);
+    signal s_check <== check_fit(K, B)(s);
 
-    signal x[N] <== power(N)(s, e, n);
-    signal signature_check <== LongEqual(N)(x, m);
+    signal x[K] <== power(K, B)(s, e, n);
+    signal signature_check <== LongEqual(K)(x, m);
     isVerified <== all(5)([n_check, e_check, m_check, s_check, signature_check]);
 }
 
-component main {public [n, e]} = check_signature(4);
+// 8*8 = 64-bit, takes 20GB of RAM, and 2-3 mins to compile
+component main {public [n, e]} = check_signature(8, 8);
