@@ -13,15 +13,29 @@ template all(N) {
     out <== IsEqual()([x, N]);
 }
 
+template less_than_power2(N) {
+    signal input in;
+    signal output out;
+
+    var pw = 1, value = 0;
+    signal bits[N];
+    for (var i = 0; i < N; i++) {
+        bits[i] <-- (in >> i) & 1;
+        bits[i] * (bits[i] - 1) === 0;
+        value += bits[i] * pw;
+        pw *= 2;
+    }
+
+    out <== IsEqual()([in, value]);
+}
+
 template check_fit(N, B) {
     signal input in[N];
     signal output out;
 
     signal is_valid[N];
-    for (var i = 0; i < N; i++) {
-        // use 252, so the user can pass a bad input, and only then get false
-        is_valid[i] <== LessThan(252)([in[i], 1 << B]);
-    }
+    for (var i = 0; i < N; i++)
+        is_valid[i] <== less_than_power2(B)(in[i]);
 
     out <== all(N)(is_valid);
 }
