@@ -29,20 +29,25 @@ template less_than_power2(N) {
     out <== IsEqual()([in, value]);
 }
 
-template and_power2(N) {
+template and_power2(N, MAX_BITS) {
+    assert(N <= MAX_BITS);
     signal input in;
     signal output out;
 
     var pw = 1, value = 0;
-    signal bits[N];
-    for (var i = 0; i < N; i++) {
+    signal bits[MAX_BITS];
+    for (var i = 0; i < MAX_BITS; i++) {
         bits[i] <-- (in >> i) & 1;
         bits[i] * (bits[i] - 1) === 0;
         value += bits[i] * pw;
         pw *= 2;
     }
+    in === value;
 
-    out <== value;
+    var res = 0;
+    for (var i = 0; i < N; i++)
+        res += bits[i] * (1 << i);
+    out <== res;
 }
 
 template check_fit(N, B) {
@@ -64,7 +69,7 @@ function calc_max_bits(K, B) {
     return 2 * B * i;
 }
 
-template normalize(K, B) {
+template normalize(K, B, MAX_BITS) {
     // assuming that result will fit
     signal input in[K];
     signal output out[K];
@@ -72,7 +77,7 @@ template normalize(K, B) {
     var carry = 0;
     for (var i = 0; i < K; i++) {
         var x = in[i] + carry;
-        out[i] <== and_power2(B)(x);
+        out[i] <== and_power2(B, MAX_BITS)(x);
         carry = (x - out[i]) / (1 << B); // shift right by B
     }
 }
@@ -105,7 +110,7 @@ template mult(K, B) {
         temp[i] <== x;
     }
 
-    out <== normalize(2 * K, B)(temp);
+    out <== normalize(2 * K, B, calc_max_bits(K, B))(temp);
 }
 
 template constant_to_blocks(N, K, B) {
@@ -240,7 +245,7 @@ template mult_small(N, B) {
     for (var i = 0; i < N; i++)
         temp[i] <== a[i] * b;
     temp[N] <== 0;
-    out <== normalize(N + 1, B)(temp);
+    out <== normalize(N + 1, B, B + 1)(temp);
 }
 
 // https://people.eecs.berkeley.edu/~fateman/282/F%20Wright%20notes/week4.pdf
