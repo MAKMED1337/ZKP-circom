@@ -14,6 +14,8 @@ template all(N) {
 }
 
 template less_than_power2(N) {
+    assert(N <= 253);
+
     signal input in;
     signal output out;
 
@@ -31,6 +33,8 @@ template less_than_power2(N) {
 
 template and_power2(N, MAX_BITS) {
     assert(N <= MAX_BITS);
+    assert(MAX_BITS <= 253);
+
     signal input in;
     signal output out;
 
