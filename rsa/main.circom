@@ -29,6 +29,22 @@ template less_than_power2(N) {
     out <== IsEqual()([in, value]);
 }
 
+template and_power2(N) {
+    signal input in;
+    signal output out;
+
+    var pw = 1, value = 0;
+    signal bits[N];
+    for (var i = 0; i < N; i++) {
+        bits[i] <-- (in >> i) & 1;
+        bits[i] * (bits[i] - 1) === 0;
+        value += bits[i] * pw;
+        pw *= 2;
+    }
+
+    out <== value;
+}
+
 template check_fit(N, B) {
     signal input in[N];
     signal output out;
@@ -46,6 +62,19 @@ function calc_max_bits(K, B) {
         i++;
 
     return 2 * B * i;
+}
+
+template normalize(K, B) {
+    // assuming that result will fit
+    signal input in[K];
+    signal output out[K];
+
+    var carry = 0;
+    for (var i = 0; i < K; i++) {
+        var x = in[i] + carry;
+        out[i] <== and_power2(B)(x);
+        carry = (x - out[i]) / (1 << B); // shift right by B
+    }
 }
 
 template mult(K, B) {
@@ -76,31 +105,13 @@ template mult(K, B) {
         temp[i] <== x;
     }
 
-    // normalize each res[k], so it has less then B bits
-    var carry = 0;
-    var max_bits = calc_max_bits(K, B);
-    signal bits[2 * K][max_bits];
-    signal truncated_bits[2 * K][B];
-
-    for (var i = 0; i < 2 * K; i++) {
-        bits[i] <== Num2Bits(max_bits)(temp[i] + carry); // impilicit assertion about overflow
-        for (var j = 0; j < B; j++)
-            truncated_bits[i][j] <== bits[i][j];
-        out[i] <== Bits2Num(B)(truncated_bits[i]);
-
-        carry = 0;
-        var pw = 1;
-        for (var j = B; j < max_bits; j++) {
-            carry += bits[i][j] * pw;
-            pw *= 2;
-        }
-    }
+    out <== normalize(2 * K, B)(temp);
 }
 
-template bin(N, X) {
-    signal output out[N];
-    for (var i = 0; i < N; i++)
-        out[i] <== (X >> i) & 1;
+template constant_to_blocks(N, K, B) {
+    signal output out[K];
+    for (var i = 0; i < K; i++)
+        out[i] <== (N >> (i * B)) & ((1 << B) - 1);
 }
 
 template if_else(N) {
@@ -146,28 +157,146 @@ template if_mod(N) {
     out <== if_else(N)(diff, strip, equal);
 }
 
-template take_mod_bin(N, M) {
+template sub_if_ge(N, B) {
+    signal input a[N];
+    signal input b[N];
+    signal output out[N];
+    // signal output ge;
+
+    signal lt[N];
+    signal temp[N];
+    var carry = 0;
+    for (var i = 0; i < N; i++) {
+        var x = b[i] + carry;
+        lt[i] <== LessThan(B + 1)([a[i], x]);
+
+        temp[i] <== lt[i] * (1 << B) + (a[i] - x);
+        carry = lt[i];
+    }
+
+    out <== if_else(N)(a, temp, carry);
+    // ge <== 1 - carry;
+}
+
+template get_highest_non_zero(K, B) {
+    signal input in[K];
+    signal output out;
+
+    signal inner[K];
+    signal prev_zero[K];
+    var prev = 0;
+    for (var i = K - 1; i >= 0; i--) {
+        prev_zero[i] <== IsEqual()([prev, 0]);
+        inner[i] <== prev_zero[i] * in[i] + prev;
+        prev = inner[i];
+    }
+    out <== prev;
+}
+
+template floor_div(B) {
+    signal input a; // can have up to 2B bits, but not greater than (1 << B) (b + 1)
+    signal input b; // can only have B bits
+    signal output out;
+
+    signal x <-- a \ b;
+    signal y <-- a % b;
+
+    // LessThan(B)([y, b]) === 1;
+    component lt = LessThan(B);
+    lt.in <== [y, b];
+    lt.out === 1;
+
+    // a / b <= (1 << B) (b + 1) / b = 2 * (1 << B) = 1 << (B + 1)
+
+    // less_than_power2(B + 1)(x) === 1;
+    component lt2 = less_than_power2(B + 1);
+    lt2.in <== x;
+    lt2.out === 1;
+
+    x * b + y === a;
+    out <== x;
+}
+
+template approx_q(B) {
+    signal input u0;
+    signal input u1;
+    signal input v1;
+    signal output out;
+
+    signal numerator <== u0 * (1 << B) + u1;
+    signal denominator <== v1;
+    signal temp_res <== floor_div(B)(numerator, denominator);
+    // we should take min(temp_res, (1 << B) - 1), so we can check if the number is less than a power of 2
+    signal fit <== less_than_power2(B)(temp_res);
+    out <== fit * temp_res + (1 - fit) * ((1 << B) - 1);
+}
+
+template mult_small(N, B) {
+    signal input a[N];
+    signal input b;
+    signal output out[N + 1];
+
+    signal temp[N + 1];
+    for (var i = 0; i < N; i++)
+        temp[i] <== a[i] * b;
+    temp[N] <== 0;
+    out <== normalize(N + 1, B)(temp);
+}
+
+// https://people.eecs.berkeley.edu/~fateman/282/F%20Wright%20notes/week4.pdf
+// 4.1
+template small_mod(N, B) {
+    signal input a[N + 1];
+    signal input b[N];
+    signal input highest_value;
+    signal output out[N];
+
+    signal q_big <== approx_q(B)(a[N], a[N - 1], highest_value);
+    // sub at most 3 from q
+
+    signal less_than_3 <== less_than_power2(2)(q_big);
+    signal q <== (1 - less_than_3) * (q_big - 3); // 0 otherwise
+
+    signal x[N + 1] <== mult_small(N, B)(b, q);
+
+    signal chain[4][N + 1];
+    chain[0] <== sub_if_ge(N + 1, B)(a, x);
+
+    signal b_ext[N + 1];
+    for (var i = 0; i < N; i++)
+        b_ext[i] <== b[i];
+    b_ext[N] <== 0;
+
+    for (var i = 1; i < 4; i++)
+        chain[i] <== sub_if_ge(N + 1, B)(chain[i - 1], b_ext);
+
+    for (var i = 0; i < N; i++)
+        out[i] <== chain[3][i];
+}
+
+// https://people.eecs.berkeley.edu/~fateman/282/F%20Wright%20notes/week4.pdf
+// 4
+template take_mod(N, M, B) {
+    assert (M >= N);
     signal input a[M];
     signal input mod[N];
     signal output out[N];
 
-    signal sliding_window[M + 1][N]; // slidining_window[i] = (a[i..N] as a number) % mod
-    signal sliding_window_unmod[M + 1][N + 1];
-    sliding_window[M] <== bin(N, 0)();
+    signal v1 <== get_highest_non_zero(N, B)(mod);
+
+    signal r[M][N + 1]; // raw
+    signal q[M + 1][N]; // after the mod
+    q[M] <== constant_to_blocks(0, N, B)();
 
     for (var i = M - 1; i >= 0; i--) {
-        // when we are sliding to the left, we are concatinating one digit to the right
-        // so the new value <= 2 * (previous value) + 1 <= 2 * (mod - 1) + 1 = 2 mod - 1
-        // so we need to take mod only 1 time
-
-        sliding_window_unmod[i][0] <== a[i];
+        // r[i] = q[i + 1] << B | a[i];
+        r[i][0] <== a[i];
         for (var j = 0; j < N; j++)
-            sliding_window_unmod[i][j + 1] <== sliding_window[i + 1][j];
-
-        sliding_window[i] <== if_mod(N)(sliding_window_unmod[i], mod);
+            r[i][j + 1] <== q[i + 1][j];
+        q[i] <== small_mod(N, B)(r[i], mod, v1);
     }
 
-    out <== sliding_window[0];
+    out <== q[0];
 }
 
 template block_to_bin(K, B) {
@@ -183,22 +312,6 @@ template block_to_bin(K, B) {
     }
 }
 
-template bin_to_block(K, B) {
-    var N = K * B;
-    signal input a[N];
-    signal output out[K];
-
-    for (var i = 0; i < K; i++) {
-        var x = 0;
-        var pw = 1;
-        for (var j = 0; j < B; j++) {
-            x += a[i] * pw;
-            pw *= 2;
-        }
-        out[i] <== x;
-    }
-}
-
 template mult_mod(K, B) {
     signal input a[K];
     signal input b[K];
@@ -208,10 +321,7 @@ template mult_mod(K, B) {
     signal mod_bin[K * B] <== block_to_bin(K, B)(mod);
 
     signal res[2 * K] <== mult(K, B)(a, b);
-    signal res_bin[2 * K * B] <== block_to_bin(2 * K, B)(res);
-
-    signal out_bin[K * B] <== take_mod_bin(K * B, 2 * K * B)(res_bin, mod_bin);
-    out <== bin_to_block(K, B)(out_bin);
+    out <== take_mod(K, 2 * K, B)(res, mod);
 }
 
 template power(K, B) {
@@ -228,7 +338,7 @@ template power(K, B) {
     signal res[N + 1][K]; // result, if b[i] = 1, and previous bits are correct
     signal res_if_1[N + 1][K];
 
-    res[0] <== bin(K, 1)(); // not the bin, but ok
+    res[0] <== constant_to_blocks(1, K, N)(); // not the bin, but ok
     exp[1] <== a;
     for (var i = 1; i <= N; i++) {
         res_if_1[i] <== mult_mod(K, B)(res[i - 1], exp[i], mod);
@@ -272,5 +382,5 @@ template check_signature(K, B) {
     isVerified <== all(5)([n_check, e_check, m_check, s_check, signature_check]);
 }
 
-// 8*8 = 64-bit, takes 20GB of RAM, and 2-3 mins to compile
-component main {public [n, e]} = check_signature(8, 8);
+// 8*32 = 256-bit, takes 10GB of RAM, and 4m to compile
+component main {public [n, e]} = check_signature(8, 32);
