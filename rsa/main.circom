@@ -13,6 +13,22 @@ template all(N) {
     out <== IsEqual()([x, N]);
 }
 
+template resize(N, M) {
+    signal input in[N];
+    signal output out[M];
+
+    for (var i = 0; i < M; i++) {
+        if (i < N)
+            out[i] <== in[i];
+        else
+            out[i] <== 0;
+    }
+
+    // Should it be here ?
+    for (var i = M; i < N; i++)
+        in[i] === 0;
+}
+
 template less_than_power2(N) {
     assert(N <= 253);
 
@@ -70,7 +86,7 @@ function calc_max_bits(K, B) {
     while((1 << i) < K)
         i++;
 
-    return 2 * B * i;
+    return 2 * B + i;
 }
 
 template normalize(K, B, MAX_BITS) {
@@ -91,19 +107,14 @@ template mult(K, B) {
     signal input b[K];
     signal output out[2 * K];
 
-    signal mult_by_block[K][2 * K];
-    for (var i = 0; i < K; i++) {// i-th block
-        for (var j = 0; j < 2 * K; j++) {
-            if (j < i || j - i >= K) // region near the shifted value bits
-                mult_by_block[i][j] <== 0;
-            else
-                mult_by_block[i][j] <== a[i] * b[j - i];
-        }
-    }
+    signal mult_by_block[K][K];
+    for (var i = 0; i < K; i++)
+        for (var j = 0; j < K; j++)
+            mult_by_block[i][j] <== a[i] * b[j];
 
     signal temp[2 * K];
     // calculate res for k, as: res[k] = sum(a[i] * b[k - i])
-    // max value per temp is (2 ** B - 1)**2 * (K + 1)
+    // max value per temp is K * (2**B - 1)**2
 
     for (var i = 0; i < 2 * K; i++) {
         var x = 0;
@@ -187,19 +198,26 @@ template sub_if_ge(N, B) {
     // ge <== 1 - carry;
 }
 
-template get_highest_non_zero(K, B) {
+template get_highest_index_non_zero(K, B) {
     signal input in[K];
     signal output out;
 
-    signal inner[K];
     signal prev_zero[K];
-    var prev = 0;
+    signal zero[K];
+    signal can_use[K];
+    signal inner[K];
+    var prev = 0, res = 0;
+    // probably, something more optimal exists
     for (var i = K - 1; i >= 0; i--) {
         prev_zero[i] <== IsEqual()([prev, 0]);
-        inner[i] <== prev_zero[i] * in[i] + prev;
-        prev = inner[i];
+        zero[i] <== IsEqual()([in[i], 0]);
+        can_use[i] <== prev_zero[i] * (1 - zero[i]);
+
+        prev += can_use[i];
+        inner[i] <== can_use[i] * i;
+        res += inner[i];
     }
-    out <== prev;
+    out <== res;
 }
 
 template floor_div(B) {
@@ -234,6 +252,7 @@ template approx_q(B) {
 
     signal numerator <== u0 * (1 << B) + u1;
     signal denominator <== v1;
+
     signal temp_res <== floor_div(B)(numerator, denominator);
     // we should take min(temp_res, (1 << B) - 1), so we can check if the number is less than a power of 2
     signal fit <== less_than_power2(B)(temp_res);
@@ -249,7 +268,38 @@ template mult_small(N, B) {
     for (var i = 0; i < N; i++)
         temp[i] <== a[i] * b;
     temp[N] <== 0;
-    out <== normalize(N + 1, B, B + 1)(temp);
+    out <== normalize(N + 1, B, 2 * B)(temp);
+}
+
+template div_small_no_remainder(N, B) {
+    signal input a[N];
+    signal input b;
+    signal output out[N];
+
+    var pref = 0;
+    signal temp[N];
+    for (var i = N - 1; i >= 0; i--) {
+        temp[i] <== pref * (1 << B) + a[i];
+        out[i] <== floor_div(B)(temp[i], b);
+        pref = temp[i] - out[i] * b;
+    }
+    pref === 0;
+}
+
+template get_index(N) {
+    signal input a[N];
+    signal input ind;
+    signal output out;
+
+    signal eq[N];
+    signal val[N];
+    var res = 0;
+    for (var i = 0; i < N; i++) {
+        eq[i] <== IsEqual()([i, ind]);
+        val[i] <== eq[i] * a[i];
+        res += val[i];
+    }
+    out <== res;
 }
 
 // https://people.eecs.berkeley.edu/~fateman/282/F%20Wright%20notes/week4.pdf
@@ -257,10 +307,14 @@ template mult_small(N, B) {
 template small_mod(N, B) {
     signal input a[N + 1];
     signal input b[N];
-    signal input highest_value;
+    signal input ind;
     signal output out[N];
 
-    signal q_big <== approx_q(B)(a[N], a[N - 1], highest_value);
+    signal u0 <== get_index(N + 1)(a, ind + 1);
+    signal u1 <== get_index(N + 1)(a, ind);
+    signal v1 <== get_index(N)(b, ind);
+
+    signal q_big <== approx_q(B)(u0, u1, v1);
     // sub at most 3 from q
 
     signal less_than_3 <== less_than_power2(2)(q_big);
@@ -291,21 +345,28 @@ template take_mod(N, M, B) {
     signal input mod[N];
     signal output out[N];
 
-    signal v1 <== get_highest_non_zero(N, B)(mod);
+    // global preprocessing
+    signal ind <== get_highest_index_non_zero(N, B)(mod);
+    signal v1 <== get_index(N)(mod, ind);
+    signal d <== floor_div(B + 1)(1 << B, v1 + 1);
 
-    signal r[M][N + 1]; // raw
-    signal q[M + 1][N]; // after the mod
-    q[M] <== constant_to_blocks(0, N, B)();
+    signal mod_pre_1[N + 1] <== mult_small(N, B)(mod, d);
+    signal mod_pre[N] <== resize(N + 1, N)(mod_pre_1); // should fit, by the notes
+    signal a_pre[M + 1] <== mult_small(M, B)(a, d);
 
-    for (var i = M - 1; i >= 0; i--) {
+    signal r[M + 1][N + 1]; // raw
+    signal q[M + 2][N]; // after the mod
+    q[M + 1] <== constant_to_blocks(0, N, B)();
+
+    for (var i = M; i >= 0; i--) {
         // r[i] = q[i + 1] << B | a[i];
-        r[i][0] <== a[i];
+        r[i][0] <== a_pre[i];
         for (var j = 0; j < N; j++)
             r[i][j + 1] <== q[i + 1][j];
-        q[i] <== small_mod(N, B)(r[i], mod, v1);
+        q[i] <== small_mod(N, B)(r[i], mod_pre, ind);
     }
 
-    out <== q[0];
+    out <== div_small_no_remainder(N, B)(q[0], d);
 }
 
 template block_to_bin(K, B) {
@@ -327,41 +388,46 @@ template mult_mod(K, B) {
     signal input mod[K];
     signal output out[K];
 
-    signal mod_bin[K * B] <== block_to_bin(K, B)(mod);
-
     signal res[2 * K] <== mult(K, B)(a, b);
     out <== take_mod(K, 2 * K, B)(res, mod);
 }
 
-template power(K, B) {
+function bits(n) {
+    var res = 0;
+    while (n) {
+        res++;
+        n >>= 1;
+    }
+    return res;
+}
+
+template power(K, B, e) {
     signal input a[K];
-    signal input b[K];
     signal input mod[K];
     signal output out[K];
 
-    var N = K * B;
-    signal bin_b[N] <== block_to_bin(K, B)(b);
-
     // 1-index
-    signal exp[N + 2][K];
-    signal res[N + 1][K]; // result, if b[i] = 1, and previous bits are correct
-    signal res_if_1[N + 1][K];
+    var sz = bits(e);
+    signal exp[sz + 1][K];
+    signal res[sz + 1][K]; // result, if b[i] = 1, and previous bits are correct
 
-    res[0] <== constant_to_blocks(1, K, N)(); // not the bin, but ok
+    res[0] <== constant_to_blocks(1, K, B)(); // not the bin, but ok
     exp[1] <== a;
-    for (var i = 1; i <= N; i++) {
-        res_if_1[i] <== mult_mod(K, B)(res[i - 1], exp[i], mod);
+    for (var i = 1; i <= sz; i++) {
+        var x = e >> (i - 1);
+        if (x & 1)
+            res[i] <== mult_mod(K, B)(res[i - 1], exp[i], mod);
+        else
+            res[i] <== res[i - 1];
 
-        var bit = bin_b[i - 1]; // because of the offset
-        res[i] <== if_else(K)(res_if_1[i], res[i - 1], bit);
-
-        exp[i + 1] <== mult_mod(K, B)(exp[i], exp[i], mod);
+        if(i + 1 <= sz)
+            exp[i + 1] <== mult_mod(K, B)(exp[i], exp[i], mod);
     }
 
-    out <== res[N];
+    out <== res[sz];
 }
 
-template LongEqual(N) {
+template long_equals(N) {
     signal input a[N];
     signal input b[N];
     signal output out;
@@ -372,24 +438,22 @@ template LongEqual(N) {
     out <== all(N)(same);
 }
 
-template check_signature(K, B) {
-    assert (K < 250); // to not overflow circom's numbers
+template check_signature(K, B, e) {
     signal input n[K];
-    signal input e[K];
     signal input m[K];
     signal input s[K];
 
     signal output isVerified;
 
     signal n_check <== check_fit(K, B)(n);
-    signal e_check <== check_fit(K, B)(e);
     signal m_check <== check_fit(K, B)(m);
     signal s_check <== check_fit(K, B)(s);
 
-    signal x[K] <== power(K, B)(s, e, n);
-    signal signature_check <== LongEqual(K)(x, m);
-    isVerified <== all(5)([n_check, e_check, m_check, s_check, signature_check]);
+    signal x[K] <== power(K, B, e)(s, n);
+    signal signature_check <== long_equals(K)(x, m);
+
+    isVerified <== all(4)([n_check, m_check, s_check, signature_check]);
 }
 
-// 8*32 = 256-bit, takes 10GB of RAM, and 4m to compile
-component main {public [n, e]} = check_signature(8, 32);
+// 32*64 = 2048-bit, takes 9-10GB of RAM, and 4-5m to compile
+component main {public [n]} = check_signature(32, 64, 65537);
