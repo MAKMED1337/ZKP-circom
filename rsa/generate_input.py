@@ -5,12 +5,12 @@ NUMBER_OF_BLOCKS = 32
 BLOCK_SIZE = 64
 
 
-def encode(n: int) -> list[int]:
+def encode(n: int) -> list[str]:
     initial_n = n
 
-    res = [0] * NUMBER_OF_BLOCKS
+    res = [""] * NUMBER_OF_BLOCKS
     for i in range(NUMBER_OF_BLOCKS):
-        res[i] = n & ((1 << BLOCK_SIZE) - 1)
+        res[i] = str(n & ((1 << BLOCK_SIZE) - 1))
         n >>= BLOCK_SIZE
 
     if n != 0:
@@ -43,8 +43,12 @@ def main() -> None:
     # q = int(input("Enter q: "))
     # m = int(input("Enter m: "))
 
-    p = 257
-    q = 263
+    # p = 257
+    # q = 263
+
+    # 512 bit prime numbers
+    p = 0xE14CC99C3D26DE84A34543625FA914BEE1D51A831D15A7134693FF5E40AD48284D453CAEFE038C903C089AE0B5807C3466ED2039906A0A2CC595276F86A2FE41
+    q = 0xD3044FE41C7A6D906BD5792E7577B07CFE37EF63CAB652067E66524447018B086D1F186750EBE82760D887BAA072B25D8B9DF16182594E549361BC76246F2B09
     m = 113
 
     generate_input(p, q, m)
