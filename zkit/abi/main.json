@@ -1,0 +1,58 @@
+{
+  "_format": "zktype-circom-artifact-1",
+  "circuitName": "verify",
+  "sourceName": "circuits/main.circom",
+  "basePath": "circuits",
+  "compilerVersion": "2.1.8",
+  "signals": [
+    {
+      "type": "Input",
+      "internalType": "<number-like>",
+      "visibility": "public",
+      "name": "root",
+      "dimensions": 0
+    },
+    {
+      "type": "Input",
+      "internalType": "<array-like>",
+      "visibility": "private",
+      "name": "r",
+      "dimensions": 1
+    },
+    {
+      "type": "Input",
+      "internalType": "<array-like>",
+      "visibility": "private",
+      "name": "s",
+      "dimensions": 1
+    },
+    {
+      "type": "Input",
+      "internalType": "<array-like>",
+      "visibility": "private",
+      "name": "pk",
+      "dimensions": 2
+    },
+    {
+      "type": "Input",
+      "internalType": "<array-like>",
+      "visibility": "private",
+      "name": "proof",
+      "dimensions": 1
+    },
+    {
+      "type": "Input",
+      "internalType": "<array-like>",
+      "visibility": "private",
+      "name": "path",
+      "dimensions": 1
+    },
+    {
+      "type": "Output",
+      "internalType": "<number-like>",
+      "visibility": "public",
+      "name": "out",
+      "dimensions": 0
+    }
+  ]
+}
