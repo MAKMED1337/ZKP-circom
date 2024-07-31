@@ -28,7 +28,7 @@ const config: HardhatUserConfig = {
             typesDir: "generated-types/zkit",
         },
         verifiersDir: "contracts/verifiers",
-        nativeCompiler: false,
+        nativeCompiler: true,
         quiet: false,
     },
 };

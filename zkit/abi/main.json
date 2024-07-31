@@ -1,6 +1,6 @@
 {
   "_format": "zktype-circom-artifact-1",
-  "circuitName": "verify",
+  "circuitName": "CheckKeyAndInclusion",
   "sourceName": "circuits/main.circom",
   "basePath": "circuits",
   "compilerVersion": "2.1.8",

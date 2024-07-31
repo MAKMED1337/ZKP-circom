@@ -12,7 +12,7 @@ import {
   PublicSignals,
 } from "@solarity/zkit";
 
-export type Privateverify = {
+export type PrivateCheckKeyAndInclusion = {
   root: NumberLike;
   r: NumberLike[];
   s: NumberLike[];
@@ -21,14 +21,14 @@ export type Privateverify = {
   path: NumberLike[];
 };
 
-export type Publicverify = {
+export type PublicCheckKeyAndInclusion = {
   out: NumericString;
   root: NumericString;
 };
 
-export type Proofverify = {
+export type ProofCheckKeyAndInclusion = {
   proof: Groth16Proof;
-  publicSignals: Publicverify;
+  publicSignals: PublicCheckKeyAndInclusion;
 };
 
 export type Calldata = [
@@ -38,12 +38,14 @@ export type Calldata = [
   [NumericString, NumericString],
 ];
 
-export class verify extends CircuitZKit {
+export class CheckKeyAndInclusion extends CircuitZKit {
   constructor(config: CircuitZKitConfig) {
     super(config);
   }
 
-  public async generateProof(inputs: Privateverify): Promise<Proofverify> {
+  public async generateProof(
+    inputs: PrivateCheckKeyAndInclusion,
+  ): Promise<ProofCheckKeyAndInclusion> {
     const proof = await super.generateProof(inputs as any);
 
     return {
@@ -52,14 +54,16 @@ export class verify extends CircuitZKit {
     };
   }
 
-  public async verifyProof(proof: Proofverify): Promise<boolean> {
+  public async verifyProof(proof: ProofCheckKeyAndInclusion): Promise<boolean> {
     return await super.verifyProof({
       proof: proof.proof,
       publicSignals: this._denormalizePublicSignals(proof.publicSignals),
     });
   }
 
-  public async generateCalldata(proof: Proofverify): Promise<Calldata> {
+  public async generateCalldata(
+    proof: ProofCheckKeyAndInclusion,
+  ): Promise<Calldata> {
     return await super.generateCalldata({
       proof: proof.proof,
       publicSignals: this._denormalizePublicSignals(proof.publicSignals),
@@ -70,7 +74,9 @@ export class verify extends CircuitZKit {
     return ["out", "root"];
   }
 
-  private _normalizePublicSignals(publicSignals: PublicSignals): Publicverify {
+  private _normalizePublicSignals(
+    publicSignals: PublicSignals,
+  ): PublicCheckKeyAndInclusion {
     const signalNames = this.getSignalNames();
 
     return signalNames.reduce((acc: any, signalName, index) => {
@@ -80,7 +86,7 @@ export class verify extends CircuitZKit {
   }
 
   private _denormalizePublicSignals(
-    publicSignals: Publicverify,
+    publicSignals: PublicCheckKeyAndInclusion,
   ): PublicSignals {
     const signalNames = this.getSignalNames();
 
@@ -88,4 +94,4 @@ export class verify extends CircuitZKit {
   }
 }
 
-export default verify;
+export default CheckKeyAndInclusion;

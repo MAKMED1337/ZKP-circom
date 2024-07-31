@@ -3,4 +3,4 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export * from "./verify";
+export * from "./CheckKeyAndInclusion";

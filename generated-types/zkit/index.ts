@@ -5,4 +5,4 @@
 
 import * as Core from "./core";
 export { Core };
-export * from "./core/verify";
+export * from "./core/CheckKeyAndInclusion";
