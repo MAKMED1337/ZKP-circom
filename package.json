@@ -5,6 +5,10 @@
     "devDependencies": {
         "@nomicfoundation/hardhat-toolbox": "^5.0.0",
         "@solarity/hardhat-zkit": "^0.3.0-rc.1",
-        "hardhat": "^2.22.7"
+        "hardhat": "^2.22.7",
+        "mocha": "^10.7.0"
+    },
+    "scripts": {
+        "test": "./node_modules/mocha/bin/mocha.js"
     }
 }

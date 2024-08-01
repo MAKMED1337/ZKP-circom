@@ -29,6 +29,13 @@
     {
       "type": "Input",
       "internalType": "<array-like>",
+      "visibility": "public",
+      "name": "msgHash",
+      "dimensions": 1
+    },
+    {
+      "type": "Input",
+      "internalType": "<array-like>",
       "visibility": "private",
       "name": "pk",
       "dimensions": 2

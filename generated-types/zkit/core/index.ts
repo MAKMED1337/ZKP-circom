@@ -4,3 +4,5 @@
 /* eslint-disable */
 
 export * from "./CheckKeyAndInclusion";
+import * as Signature from "./signature";
+export { Signature };

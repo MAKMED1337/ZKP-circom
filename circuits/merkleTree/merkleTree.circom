@@ -1,5 +1,6 @@
+pragma circom 2.1.8;
 template AddressFromPK() {
-    signal input pk[2][2];
+    signal input pk[2][4];
     signal output address; // 160-bit integer
 
     // TODO
@@ -7,7 +8,7 @@ template AddressFromPK() {
 }
 
 template CheckInclusionProof(levels) {
-    signal input pk[2][2];
+    signal input pk[2][4];
     signal input proof[levels];
     signal input path[levels];
 

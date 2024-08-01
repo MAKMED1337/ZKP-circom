@@ -6,3 +6,4 @@
 import * as Core from "./core";
 export { Core };
 export * from "./core/CheckKeyAndInclusion";
+export * from "./core/signature/CheckSignature";

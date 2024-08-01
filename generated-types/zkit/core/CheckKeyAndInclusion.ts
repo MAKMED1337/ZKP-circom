@@ -16,6 +16,7 @@ export type PrivateCheckKeyAndInclusion = {
   root: NumberLike;
   r: NumberLike[];
   s: NumberLike[];
+  msgHash: NumberLike[];
   pk: NumberLike[][];
   proof: NumberLike[];
   path: NumberLike[];
@@ -24,6 +25,7 @@ export type PrivateCheckKeyAndInclusion = {
 export type PublicCheckKeyAndInclusion = {
   out: NumericString;
   root: NumericString;
+  msgHash: NumericString[];
 };
 
 export type ProofCheckKeyAndInclusion = {
@@ -35,7 +37,7 @@ export type Calldata = [
   [NumericString, NumericString],
   [[NumericString, NumericString], [NumericString, NumericString]],
   [NumericString, NumericString],
-  [NumericString, NumericString],
+  [NumericString, NumericString, NumericString],
 ];
 
 export class CheckKeyAndInclusion extends CircuitZKit {
@@ -71,7 +73,7 @@ export class CheckKeyAndInclusion extends CircuitZKit {
   }
 
   public getSignalNames(): string[] {
-    return ["out", "root"];
+    return ["out", "root", "msgHash"];
   }
 
   private _normalizePublicSignals(
