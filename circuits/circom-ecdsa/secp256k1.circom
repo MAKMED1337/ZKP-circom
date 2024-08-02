@@ -78,7 +78,7 @@ template AddUnequalCubicConstraint() {
     for (var i = 0; i < 4; i++) y1y2Comp.a[i] <== y1[i];
     for (var i = 0; i < 4; i++) y1y2Comp.b[i] <== y2[i];
     for (var i = 0; i < 7; i++) y1y2[i] <== y1y2Comp.out[i];
- 
+
     component zeroCheck = CheckCubicModPIsZero(200); // 200 bits per register
     for (var i = 0; i < 10; i++) {
         if (i < 7) {
@@ -140,7 +140,7 @@ template Secp256k1PointOnLine() {
     for (var i = 0; i < 4; i++) x1y2Comp.a[i] <== x1[i];
     for (var i = 0; i < 4; i++) x1y2Comp.b[i] <== y2[i];
     for (var i = 0; i < 7; i++) x1y2[i] <== x1y2Comp.out[i]; // 130 bits
-    
+
     component zeroCheck = CheckQuadraticModPIsZero(132);
     for (var i = 0; i < 7; i++) {
         zeroCheck.in[i] <== x3y2[i] + x2y3[i] + x2y1[i] - x3y1[i] - x1y2[i] - x1y3[i];
@@ -201,7 +201,7 @@ template Secp256k1PointOnCurve() {
     component y2Comp = A2NoCarry();
     for (var i = 0; i < 4; i++) y2Comp.a[i] <== y[i];
     for (var i = 0; i < 7; i++) y2[i] <== y2Comp.a2[i];
-    
+
     component zeroCheck = CheckCubicModPIsZero(197); // 197 bits per register
     for (var i = 0; i < 10; i++) {
         if (i == 0) zeroCheck.in[i] <== x3[i] - y2[i] + 7;
@@ -243,7 +243,7 @@ template Secp256k1AddUnequal(n, k) {
         cubic_constraint.x3[i] <== out[0][i];
         cubic_constraint.y3[i] <== out[1][i];
     }
-    
+
     component point_on_line = Secp256k1PointOnLine();
     for(var i = 0; i < k; i++){
         point_on_line.x1[i] <== a[0][i];
@@ -288,7 +288,7 @@ template Secp256k1Double(n, k) {
         point_on_tangent.x3[i] <== out[0][i];
         point_on_tangent.y3[i] <== out[1][i];
     }
- 
+
     component point_on_curve = Secp256k1PointOnCurve();
     for(var i = 0; i < k; i++){
         point_on_curve.x[i] <== out[0][i];

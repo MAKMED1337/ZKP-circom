@@ -20,7 +20,7 @@ template CheckKeyAndInclusion(levels) {
     signal output out;
 
     signal isSignatureCorrect <== CheckSignature()(r, s, pk, msgHash);
-    signal isProofCorrect <== CheckInclusionProof(levels)(pk, proof, path);
+    signal isProofCorrect <== CheckInclusionProof(levels)(pk, root, proof, path);
 
     out <== isSignatureCorrect * isProofCorrect;
 }

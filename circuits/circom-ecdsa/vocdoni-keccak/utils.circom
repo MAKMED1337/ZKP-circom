@@ -1,8 +1,8 @@
 pragma circom 2.0.2;
 
-include "../../node_modules/circomlib/circuits/gates.circom";
-include "../../node_modules/circomlib/circuits/sha256/xor3.circom";
-include "../../node_modules/circomlib/circuits/sha256/shift.circom"; // contains ShiftRight
+include "circomlib/circuits/gates.circom";
+include "circomlib/circuits/sha256/xor3.circom";
+include "circomlib/circuits/sha256/shift.circom"; // contains ShiftRight
 
 template Xor5(n) {
     signal input a[n];
@@ -12,7 +12,7 @@ template Xor5(n) {
     signal input e[n];
     signal output out[n];
     var i;
-    
+
     component xor3 = Xor3(n);
     for (i=0; i<n; i++) {
         xor3.a[i] <== a[i];

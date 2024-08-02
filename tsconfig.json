@@ -17,6 +17,8 @@
             "@zkit": [
                 "./generated-types/zkit"
             ]
-        }
+        },
+        "allowJs": true,
+        "checkJs": false
     }
 }

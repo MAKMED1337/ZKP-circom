@@ -3,6 +3,5 @@
     "timeout": 400000,
     "_": [
         "test/**/*.ts"
-    ],
-    "parallel": true
+    ]
 }

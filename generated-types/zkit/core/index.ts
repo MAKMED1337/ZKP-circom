@@ -4,5 +4,7 @@
 /* eslint-disable */
 
 export * from "./CheckKeyAndInclusion";
+import * as MerkleTree from "./merkleTree";
+export { MerkleTree };
 import * as Signature from "./signature";
 export { Signature };
