@@ -10,6 +10,7 @@ declare module "hardhat/types/runtime" {
     getCircuit(
       name: "CheckKeyAndInclusion",
     ): Promise<Circuits.CheckKeyAndInclusion>;
+    getCircuit(name: "IsPKValid"): Promise<Circuits.IsPKValid>;
     getCircuit(name: "CheckSignature"): Promise<Circuits.CheckSignature>;
   }
 }

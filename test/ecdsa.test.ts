@@ -1,4 +1,4 @@
-import { CheckKeyAndInclusion, CheckSignature } from "@/generated-types/zkit";
+import { CheckSignature } from "@/generated-types/zkit";
 import { expect } from "chai";
 import { zkit } from "hardhat";
 import { encode256, r, s, pk, msgHash } from "./helper";

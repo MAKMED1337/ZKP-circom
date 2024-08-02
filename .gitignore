@@ -69,3 +69,4 @@ typings/
 # circom files
 zkit
 contracts/verifiers
+
