@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "target": "es2020",
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "paths": {
+            "@/*": [
+                "./*"
+            ],
+            "@ethers-v6": [
+                "./generated-types/ethers"
+            ],
+            "@zkit": [
+                "./generated-types/zkit"
+            ]
+        },
+        "allowJs": true,
+        "checkJs": false
+    }
+}
