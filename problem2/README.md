@@ -1,0 +1,14 @@
+Code: `main.circom` \
+Input: `input.json`
+
+Keys:
+1) Proving - `keys/proof.json`
+2) Verification - `keys/verification_key.json`
+
+Smart contract:
+1) Code - `keys/verifier.sol`
+2) Sepolia address - `0x8f875A2Aa54B4C28d3FD2A987350Bb73e38A6a24`
+
+Proof:
+Calldata: `["0x242876b9fe53af300f7a01a0e8898b88bfbb120489317fba265b91947ae488e3", "0x11a13e37d31329084909282df69ad32804863f3ac7dd192112c83823dabaadd7"],[["0x1fcb73d0bab02eea49a4fb5b3ec0cfd12b0dfc61f3113e1d30129a6deb39362e", "0x04f944fdd78e0ad9e2476c8c202f201236e5b43d5053cbe2a1aa1e5636f99b3a"],["0x1d51c84a23642b70c2ec2e36d246d7b62f6fb0993edd35d95572678123921dc9", "0x2068f47b241a4ab114d2a4cc2e7c26d81bd42fd542f8bc0f3273809ffbce9c44"]],["0x2b490449153f245da8e235e65390dd79538e5a86f556ec62634c61cf7d5ee823", "0x2a1162f7a83e735e1d6c237cd44a50a4da9bdb7f70b81052c392a78f6678932f"],["0x16400a738c5caea17bd909d1364f804d126718fa4ae4a7a5c4abbd6e4a6cb4c7"]`
+
