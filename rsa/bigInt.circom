@@ -133,6 +133,23 @@ template if_else_arr(N) {
         out[i] <== cond * (if_[i] - else_[i]) + else_[i];
 }
 
+template is_less(N, B) {
+    signal input a[N];
+    signal input b[N];
+    signal output less;
+
+    signal lt[N];
+    var carry = 0;
+    for (var i = 0; i < N; i++) {
+        var x = b[i] + carry;
+        lt[i] <== LessThan(B + 1)([a[i], x]);
+
+        carry = lt[i];
+    }
+
+    less <== carry;
+}
+
 template sub_if_ge(N, B) {
     signal input a[N];
     signal input b[N];

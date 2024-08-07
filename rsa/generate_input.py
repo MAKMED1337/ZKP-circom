@@ -1,17 +1,16 @@
 from math import lcm
 import json
 
-NUMBER_OF_BLOCKS = 8
-BLOCK_SIZE = 64
+NUMBER_OF_BYTES = 64
 
 
 def encode(n: int) -> list[str]:
     initial_n = n
 
-    res = [""] * NUMBER_OF_BLOCKS
-    for i in range(NUMBER_OF_BLOCKS):
-        res[i] = str(n & ((1 << BLOCK_SIZE) - 1))
-        n >>= BLOCK_SIZE
+    res = [""] * NUMBER_OF_BYTES
+    for i in range(NUMBER_OF_BYTES):
+        res[i] = str(n & ((1 << 8) - 1))
+        n >>= 8
 
     if n != 0:
         raise ValueError(f"Cannot encode {initial_n}, it is too big")
