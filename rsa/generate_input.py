@@ -1,20 +1,13 @@
-from math import lcm
+from math import ceil, lcm
 import json
 
-NUMBER_OF_BYTES = 64
+MOD_BITS = 512
+PK_SIZE = ceil(MOD_BITS / 8)
+MESSAGE_SIZE = 32
 
 
-def encode(n: int) -> list[str]:
-    initial_n = n
-
-    res = [""] * NUMBER_OF_BYTES
-    for i in range(NUMBER_OF_BYTES):
-        res[i] = str(n & ((1 << 8) - 1))
-        n >>= 8
-
-    if n != 0:
-        raise ValueError(f"Cannot encode {initial_n}, it is too big")
-    return res
+def encode(n: int, size: int) -> list[str]:
+    return [str(i) for i in n.to_bytes(size)]
 
 
 def calculate_sig(p: int, q: int, e: int, m: int) -> int:
@@ -26,11 +19,13 @@ def calculate_sig(p: int, q: int, e: int, m: int) -> int:
 
 def generate_input(p: int, q: int, m: int, e: int = 65537) -> None:
     n = p * q
+    assert n.bit_length() == MOD_BITS
+
     s = calculate_sig(p, q, e, m)
     j = {
-        "n": encode(n),
-        "m": encode(m),
-        "s": encode(s),
+        "n": encode(n, PK_SIZE),
+        "m": encode(m, MESSAGE_SIZE),
+        "s": encode(s, PK_SIZE),
     }
 
     with open("input.json", "w") as file:
