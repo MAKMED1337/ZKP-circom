@@ -3,10 +3,6 @@ include "bigInt.circom";
 include "utils.circom";
 include "pss.circom";
 
-template Bytes2BitsBig() {
-
-}
-
 template checkHighestBit(modBits) {
     var keyBytes = cdiv(modBits, 8);
     signal input n[keyBytes];

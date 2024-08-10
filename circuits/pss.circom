@@ -1,21 +1,17 @@
 pragma circom 2.1.8;
 include "bigInt.circom";
 include "utils.circom";
-include "../node_modules/circomlib/circuits/sha256/sha256.circom";
+include "sha2/sha384/sha384_hash_bytes.circom";
 
 function cdiv(a, b) {
     return (a + b - 1) \ b;
 }
 
-template Sha256Bytes(N) {
+template HashBytes(N) {
     signal input in[N];
-    signal output out[32];
+    signal output out[48];
 
-    signal bits[8 * N] <== Bytes2BitsLittle(N)(in);
-    signal rev[8 * N] <== ReverseBitEndianness(N)(bits);
-    signal hashBits[256] <== Sha256(8 * N)(rev);
-    signal revHash[256] <== ReverseBitEndianness(32)(hashBits);
-    out <== Bits2BytesLittle(32)(revHash);
+    out <== Sha384_hash_bytes_digest(N)(in);
 }
 
 template XorBits() {
@@ -129,7 +125,7 @@ template RSAVP1(K, BytesPerBlock, e) {
 
 // https://datatracker.ietf.org/doc/html/rfc8017#appendix-B.2.1
 template MGF1(maskLen) {
-    var hLen = 32;
+    var hLen = 48;
     signal input mgfSeed[hLen];
     signal output T[maskLen];
 
@@ -149,7 +145,7 @@ template MGF1(maskLen) {
     */
     var count = cdiv(maskLen, hLen);
     signal C[count][4];
-    signal h[count][32];
+    signal h[count][hLen];
 
     for (var counter = 0; counter < count; counter++) {
         /*
@@ -166,8 +162,8 @@ template MGF1(maskLen) {
                 T = T || Hash(mgfSeed || C) .
         */
 
-        h[counter] <== Sha256Bytes(hLen + 4)(Concat(hLen, 4)(mgfSeed, C[counter]));
-        for (var i = 0; i < 32; i++) {
+        h[counter] <== HashBytes(hLen + 4)(Concat(hLen, 4)(mgfSeed, C[counter]));
+        for (var i = 0; i < hLen; i++) {
             if(index < maskLen)
                 T[index] <== h[counter][i];
             index++;
@@ -192,13 +188,13 @@ template EMSA_PSS_VERIFY(mLen, BytesPerBlock, emBits, sLen) {
         the hash function (2^61 - 1 octets for SHA-1), output
         "inconsistent" and stop.
     */
-    assert (8 * mLen <= (1 << 64) - 1); // probably some overflow can happen
+    assert (mLen <= (1 << 128) - 1);
 
     /*
     2.  Let mHash = Hash(M), an octet string of length hLen.
     */
-    var hLen = 32;
-    signal mHash[hLen] <== Sha256Bytes(mLen)(M);
+    var hLen = 48;
+    signal mHash[hLen] <== HashBytes(mLen)(M);
 
     /*
     3.  If emLen < hLen + sLen + 2, output "inconsistent" and stop.
@@ -303,14 +299,14 @@ template EMSA_PSS_VERIFY(mLen, BytesPerBlock, emBits, sLen) {
     /*
     13.  Let H' = Hash(M'), an octet string of length hLen.
     */
-    signal H_[32] <== Sha256Bytes(8 + hLen + sLen)(M_);
+    signal H_[hLen] <== HashBytes(8 + hLen + sLen)(M_);
 
     /*
     14. If H = H', output "consistent".  Otherwise, output
         "inconsistent".
     */
 
-    check[4] <== long_equals(32)(H, H_);
+    check[4] <== long_equals(hLen)(H, H_);
 
     valid <== all(CHECKS)(check);
 }

@@ -19,7 +19,7 @@ before("setup", async () => {
             name: 'RSA-PSS',
             modulusLength: 512,
             publicExponent: new Uint8Array([1, 0, 1]),
-            hash: "SHA-256",
+            hash: "SHA-384",
         },
         true,
         ['sign', 'verify']
