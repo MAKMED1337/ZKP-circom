@@ -1,5 +1,15 @@
 {
-  "dependencies": {
-    "circomlib": "^2.0.5"
-  }
+    "dependencies": {
+        "circomlib": "^2.0.5"
+    },
+    "devDependencies": {
+        "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+        "@solarity/chai-zkit": "^0.1.0",
+        "@solarity/hardhat-zkit": "^0.3.1",
+        "base64url": "^3.0.1",
+        "hardhat": "^2.22.8"
+    },
+    "scripts": {
+        "test": "./generate_tests.sh && ./node_modules/mocha/bin/mocha.js"
+    }
 }

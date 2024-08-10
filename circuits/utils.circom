@@ -1,4 +1,4 @@
-pragma circom 2.1.9;
+pragma circom 2.1.8;
 include "../node_modules/circomlib/circuits/comparators.circom";
 
 template all(N) {
@@ -12,7 +12,7 @@ template all(N) {
     out <== IsEqual()([x, N]);
 }
 
-template Bytes2Bits(N) {
+template Bytes2BitsLittle(N) {
     signal input in[N];
     signal output out[8 * N];
 
@@ -25,7 +25,7 @@ template Bytes2Bits(N) {
     }
 }
 
-template Bits2Bytes(N) {
+template Bits2BytesLittle(N) {
     signal input in[8 * N];
     signal output out[N];
 
@@ -36,3 +36,12 @@ template Bits2Bytes(N) {
         out[i] <== x;
     }
 }
+
+template ReverseBitEndianness(N) {
+    signal input in[8 * N];
+    signal output out[8 * N];
+    for (var i = 0; i < N; i++)
+        for (var j = 0; j < 8; j++)
+            out[8 * i + 7 - j] <== in[8 * i + j];
+}
+

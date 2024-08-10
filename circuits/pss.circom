@@ -1,4 +1,4 @@
-pragma circom 2.1.9;
+pragma circom 2.1.8;
 include "bigInt.circom";
 include "utils.circom";
 include "../node_modules/circomlib/circuits/sha256/sha256.circom";
@@ -11,16 +11,18 @@ template Sha256Bytes(N) {
     signal input in[N];
     signal output out[32];
 
-    signal bits[8 * N] <== Bytes2Bits(N)(in);
-    signal hashBits[256] <== Sha256(8 * N)(bits);
-    out <== Bits2Bytes(32)(hashBits);
+    signal bits[8 * N] <== Bytes2BitsLittle(N)(in);
+    signal rev[8 * N] <== ReverseBitEndianness(N)(bits);
+    signal hashBits[256] <== Sha256(8 * N)(rev);
+    signal revHash[256] <== ReverseBitEndianness(32)(hashBits);
+    out <== Bits2BytesLittle(32)(revHash);
 }
 
 template XorBits() {
     signal input a;
     signal input b;
     signal output out;
-    out <== a + b - a * b;
+    out <== a + b - 2 * a * b;
 }
 
 template XorBytes() {
@@ -33,7 +35,7 @@ template XorBytes() {
     signal bits[8];
     var x = 0;
     for (var i = 0; i < 8; i++) {
-        bits[i] <== XorBits()(bits1[0], bits2[0]);
+        bits[i] <== XorBits()(bits1[i], bits2[i]);
         x += bits[i] * (1 << i);
     }
     out <== x;
@@ -65,7 +67,7 @@ template OS2IP(N, BytesPerBlock) {
         for (var j = 0; j < BytesPerBlock; j++) {
             var p = i * BytesPerBlock + j;
             if(p < N) {
-                x += bytes[N - 1 - p] * (1 << j);
+                x += bytes[N - 1 - p] * (1 << (8 * j));
             }
         }
         inner[i] <== x;
@@ -97,7 +99,7 @@ template I2OSP(N, BytesPerBlock, xLen) {
 
             var ind = i * BytesPerBlock + j;
             if (ind < xLen) {
-                bytes[ind] <== x;
+                bytes[xLen - 1 - ind] <== x;
             } else {
                 zeros[zind] <== IsZero()(x);
                 zind++;
@@ -156,7 +158,7 @@ template MGF1(maskLen) {
                 C = I2OSP (counter, 4) .
         */
         for (var j = 0; j < 4; j++)
-            C[counter][3 - j] <== (counter \ (1 << (8 * j))) & 255;
+            C[counter][3 - j] <== (counter >> (8 * j)) & 255;
 
         /*
         B.  Concatenate the hash of the seed mgfSeed and C to the octet
@@ -230,15 +232,14 @@ template EMSA_PSS_VERIFY(mLen, BytesPerBlock, emBits, sLen) {
     */
     signal maskedDBBits[8] <== Num2Bits(8)(maskedDB[0]);
     var x = 0;
-    for (var i = 0; i < 8 * emLen - emBits; i++) {
+    for (var i = 0; i < 8 * emLen - emBits; i++)
         x += maskedDBBits[7 - i];
-    }
-    check[1] <== IsEqual()([x, 8 * emLen - emBits]);
+    check[1] <== IsZero()(x);
 
     /*
     7.  Let dbMask = MGF(H, emLen - hLen - 1).
     */
-    signal dbMask[length] <== MGF1(emLen - hLen - 1)(H);
+    signal dbMask[length] <== MGF1(length)(H);
 
     /*
     8. Let DB = maskedDB \\xor dbMask.
@@ -272,12 +273,11 @@ template EMSA_PSS_VERIFY(mLen, BytesPerBlock, emBits, sLen) {
         value 0x01, output "inconsistent" and stop.
     */
     var length2 = emLen - hLen - sLen - 2;
-    signal is_zero[length2];
-    for (var i = 0; i < length2; i++) {
-        is_zero[i] <== IsZero()(DB_[i]);
-    }
-    check[2] <== all(length2)(is_zero);
-    check[3] <== IsEqual()([DB_[length2], 1]);
+    x = 0;
+    for (var i = 0; i < length2; i++)
+        x += DB_[i];
+    check[2] <== IsZero()(x);
+    check[3] <== IsEqual()([DB_[length2], 0x01]);
 
     /*
     11.  Let salt be the last sLen octets of DB.
@@ -311,6 +311,7 @@ template EMSA_PSS_VERIFY(mLen, BytesPerBlock, emBits, sLen) {
     */
 
     check[4] <== long_equals(32)(H, H_);
+
     valid <== all(CHECKS)(check);
 }
 
@@ -361,7 +362,7 @@ template RSASSA_PSS_VERIFY(messageBytes, modBits, e, sLen) {
     signal check[CHECKS];
 
     signal m[K];
-    (check[0], m) <== RSAVP1(K, BytesPerBlock, e)(s, p);
+    (check[0], m) <== RSAVP1(K, BytesPerBlock, e)(p, s);
 
     var emLen = cdiv(modBits - 1, 8);
     signal EM[emLen];
