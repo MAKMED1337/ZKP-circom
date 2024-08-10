@@ -188,7 +188,7 @@ template EMSA_PSS_VERIFY(mLen, BytesPerBlock, emBits, sLen) {
         the hash function (2^61 - 1 octets for SHA-1), output
         "inconsistent" and stop.
     */
-    assert (mLen <= (1 << 128) - 1);
+    assert (8 * mLen <= (1 << 128) - 1); //2^128 bits for sha 384
 
     /*
     2.  Let mHash = Hash(M), an octet string of length hLen.
