@@ -35,4 +35,4 @@ template CheckSignature(messageBytes, modBits, e, sLen) {
     isVerified <== all(5)([nCheck, mCheck, sCheck, modBitsCheck, signatureCheck]);
 }
 
-component main {public [n]} = CheckSignature(32, 512, 65537, 0);
+component main {public [n]} = CheckSignature(90, 2048, 65537, 48);
